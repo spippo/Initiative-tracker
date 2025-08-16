@@ -1,0 +1,1023 @@
+<!DOCTYPE html>
+<html lang="it">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>D&D 5e - Combat Tracker</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg-primary: #111827; /* gray-900 */
+        --bg-secondary: #1f2937; /* gray-800 */
+        --bg-tertiary: #374151; /* gray-700 */
+        --text-primary: #f9fafb; /* gray-50 */
+        --text-secondary: #d1d5db; /* gray-300 */
+        --text-down: #e5e7eb;
+        --border-color: #4b5563; /* gray-600 */
+        --accent-red: #dc2626; /* red-600 */
+        --accent-yellow: #facc15; /* yellow-400 */
+        --ally-card-bg: #264653; /* Blu petrolio pastello */
+        --enemy-card-bg: var(--bg-tertiary);
+        --ally-down-bg: #6b7280; /* Grigio */
+        --enemy-down-bg: #581c87; /* Porpora scuro desaturato */
+      }
+      .light-theme {
+        --bg-primary: #f3f4f6; /* gray-100 */
+        --bg-secondary: #ffffff; /* white */
+        --bg-tertiary: #e5e7eb; /* gray-200 */
+        --text-primary: #111827; /* gray-900 */
+        --text-secondary: #374151; /* gray-700 */
+        --text-down: #1f2937;
+        --border-color: #d1d5db; /* gray-300 */
+        --ally-card-bg: #a8dadc; /* Azzurro pastello */
+        --ally-down-bg: #d1d5db; /* Grigio chiaro */
+        --enemy-down-bg: #c084fc; /* Viola chiaro */
+      }
+
+      body {
+        font-family: "Inter", sans-serif;
+        background-color: var(--bg-primary);
+        color: var(--text-primary);
+        transition: background-color 0.3s, color 0.3s;
+      }
+      .bg-panel {
+        background-color: var(--bg-secondary);
+      }
+      .bg-input {
+        background-color: var(--bg-tertiary);
+      }
+      .text-main {
+        color: var(--text-primary);
+      }
+      .text-muted {
+        color: var(--text-secondary);
+      }
+      .border-main {
+        border-color: var(--border-color);
+      }
+      .active-card {
+        background-color: var(--accent-red);
+        box-shadow: 0 0 15px rgba(220, 38, 38, 0.6);
+      }
+      .ally-card {
+        background-color: var(--ally-card-bg);
+      }
+      .enemy-card {
+        background-color: var(--enemy-card-bg);
+      }
+      .ally-down {
+        background-color: var(--ally-down-bg);
+        color: var(--text-down);
+      }
+      .enemy-down {
+        background-color: var(--enemy-down-bg);
+      }
+
+      ::-webkit-scrollbar {
+        width: 8px;
+      }
+      ::-webkit-scrollbar-track {
+        background: var(--bg-primary);
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #4a5568;
+        border-radius: 4px;
+      }
+      .tooltip .tooltip-text {
+        visibility: hidden;
+        width: 220px;
+        background-color: #1a202c;
+        color: #fff;
+        text-align: center;
+        border-radius: 6px;
+        padding: 8px;
+        position: absolute;
+        z-index: 10;
+        bottom: 125%;
+        left: 50%;
+        transform: translateX(-50%);
+        opacity: 0;
+        transition: opacity 0.3s;
+        font-size: 0.8rem;
+        line-height: 1.2;
+      }
+      .tooltip:hover .tooltip-text {
+        visibility: visible;
+        opacity: 1;
+      }
+      .group-count-input {
+        -moz-appearance: textfield;
+      }
+      .group-count-input::-webkit-outer-spin-button,
+      .group-count-input::-webkit-inner-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+      }
+    </style>
+  </head>
+  <body class="p-4 lg:p-8">
+    <!-- Schermata di Preparazione -->
+    <div id="preparation-screen" class="max-w-7xl mx-auto">
+      <header class="flex justify-between items-center text-center mb-8">
+        <div class="w-10"></div>
+        <!-- Spacer -->
+        <div>
+          <h1 class="text-4xl font-bold text-red-500">Preparazione Incontro</h1>
+          <p class="text-muted">
+            Aggiungi i mostri e preparati alla battaglia.
+          </p>
+        </div>
+        <div class="relative">
+          <button
+            id="prep-menu-button"
+            class="p-2 rounded-md hover:bg-tertiary"
+          >
+            <svg
+              class="w-6 h-6"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M4 6h16M4 12h16m-7 6h7"
+              ></path>
+            </svg>
+          </button>
+          <div
+            id="prep-menu-dropdown"
+            class="absolute right-0 mt-2 w-48 bg-panel rounded-md shadow-lg z-20 hidden"
+          >
+            <a
+              href="#"
+              id="prep-manage-party-btn"
+              class="block px-4 py-2 text-sm text-main hover:bg-tertiary"
+              >Gestione Party</a
+            >
+            <a
+              href="#"
+              id="prep-theme-toggle-btn"
+              class="block px-4 py-2 text-sm text-main hover:bg-tertiary"
+              >Cambia Tema</a
+            >
+          </div>
+        </div>
+      </header>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <div>
+          <div class="bg-panel p-6 rounded-lg shadow-lg">
+            <h2 class="text-xl font-semibold mb-4 border-b border-main pb-2">
+              Aggiungi Mostro/PNG
+            </h2>
+            <form id="add-monster-form" class="space-y-4">
+              <input
+                type="text"
+                id="monster-name"
+                placeholder="Nome"
+                class="w-full bg-input border border-main rounded-md px-3 py-2"
+                required
+              />
+              <input
+                type="number"
+                id="monster-initiative"
+                placeholder="Iniziativa"
+                class="w-full bg-input border border-main rounded-md px-3 py-2"
+                required
+              />
+              <input
+                type="number"
+                id="monster-hp"
+                placeholder="Punti Ferita"
+                class="w-full bg-input border border-main rounded-md px-3 py-2"
+                required
+              />
+              <div class="flex items-center">
+                <input
+                  type="checkbox"
+                  id="monster-is-group"
+                  class="h-4 w-4 rounded text-red-600"
+                /><label for="monster-is-group" class="ml-2 text-sm text-muted"
+                  >È un gruppo?</label
+                >
+              </div>
+              <input
+                type="number"
+                id="monster-group-count"
+                placeholder="Numero nel gruppo"
+                class="w-full bg-input border-main rounded-md px-3 py-2 hidden"
+                min="1"
+                value="1"
+              />
+              <button
+                type="submit"
+                class="w-full bg-green-600 hover:bg-green-500 text-white font-bold py-2 px-4 rounded-lg"
+              >
+                Aggiungi Mostro
+              </button>
+            </form>
+          </div>
+        </div>
+        <div>
+          <div class="bg-panel p-6 rounded-lg shadow-lg mb-4">
+            <h2 class="text-xl font-semibold mb-2">Party</h2>
+            <div id="prep-party-list" class="space-y-2"></div>
+          </div>
+          <div class="bg-panel p-6 rounded-lg shadow-lg">
+            <h2 class="text-xl font-semibold mb-2">Mostri Aggiunti</h2>
+            <div id="prep-monster-list" class="space-y-2"></div>
+          </div>
+        </div>
+      </div>
+      <div class="mt-8 text-center">
+        <button
+          id="start-encounter-btn"
+          class="bg-red-700 hover:bg-red-600 text-white font-bold py-3 px-8 rounded-lg text-xl transition duration-300 disabled:opacity-50"
+        >
+          Inizia Encounter
+        </button>
+      </div>
+    </div>
+
+    <!-- Schermata di Combattimento -->
+    <div id="encounter-screen" class="max-w-7xl mx-auto hidden">
+      <header class="flex justify-between items-center text-center mb-8">
+        <div class="w-10"></div>
+        <div>
+          <h1 class="text-4xl font-bold text-red-500">D&D 5e Combat Tracker</h1>
+        </div>
+        <div class="relative">
+          <button id="menu-button" class="p-2 rounded-md hover:bg-tertiary">
+            <svg
+              class="w-6 h-6"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M4 6h16M4 12h16m-7 6h7"
+              ></path>
+            </svg>
+          </button>
+          <div
+            id="menu-dropdown"
+            class="absolute right-0 mt-2 w-48 bg-panel rounded-md shadow-lg z-20 hidden"
+          >
+            <a
+              href="#"
+              id="manage-party-btn"
+              class="block px-4 py-2 text-sm text-main hover:bg-tertiary"
+              >Gestione Party</a
+            >
+            <a
+              href="#"
+              id="theme-toggle-btn"
+              class="block px-4 py-2 text-sm text-main hover:bg-tertiary"
+              >Cambia Tema</a
+            >
+            <a
+              href="#"
+              id="end-encounter-btn"
+              class="block px-4 py-2 text-sm text-main hover:bg-tertiary"
+              >Termina Encounter</a
+            >
+          </div>
+        </div>
+      </header>
+
+      <div
+        class="bg-panel p-4 rounded-lg shadow-lg mb-6 flex flex-wrap items-center justify-between gap-4"
+      >
+        <div class="flex items-center gap-4">
+          <button
+            id="prev-turn"
+            class="bg-gray-600 hover:bg-gray-500 text-white font-bold py-2 px-4 rounded-lg disabled:opacity-50"
+          >
+            ←
+          </button>
+          <button
+            id="next-turn"
+            class="bg-red-600 hover:bg-red-500 text-white font-bold py-2 px-4 rounded-lg disabled:opacity-50"
+          >
+            →
+          </button>
+        </div>
+        <div class="text-center">
+          <h2 class="text-2xl font-bold">
+            Round: <span id="round-counter" class="text-yellow-400">1</span>
+          </h2>
+        </div>
+        <div class="flex items-center gap-2 text-2xl font-mono">
+          <span id="timer-display">00:00:00</span>
+          <button id="timer-toggle" class="text-green-400">▶</button>
+          <button id="timer-edit" class="text-yellow-400">✎</button>
+        </div>
+      </div>
+
+      <div class="bg-panel p-6 rounded-lg shadow-lg">
+        <div
+          class="flex justify-between items-center mb-4 border-b border-main pb-2"
+        >
+          <h2 class="text-2xl font-bold">Ordine di Iniziativa</h2>
+          <button
+            id="add-dynamic-participant-btn"
+            class="bg-green-600 hover:bg-green-500 text-white font-bold rounded-full w-8 h-8 flex items-center justify-center text-xl"
+          >
+            +
+          </button>
+        </div>
+        <div id="initiative-list" class="space-y-3"></div>
+      </div>
+    </div>
+
+    <!-- Modali (Condizioni, Party, Aggiunta Dinamica) -->
+    <div
+      id="conditions-modal"
+      class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 hidden"
+    >
+      <div class="bg-panel rounded-lg shadow-xl p-6 w-full max-w-md">
+        <h3 class="text-xl font-bold mb-4">Applica Condizioni</h3>
+        <div
+          id="conditions-grid"
+          class="grid grid-cols-2 sm:grid-cols-3 gap-2"
+        ></div>
+        <div class="mt-6 flex justify-end">
+          <button
+            id="close-conditions-modal"
+            class="bg-gray-600 hover:bg-gray-500 text-white font-bold py-2 px-4 rounded-lg"
+          >
+            Chiudi
+          </button>
+        </div>
+      </div>
+    </div>
+    <div
+      id="party-manager-modal"
+      class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 hidden"
+    >
+      <div
+        class="bg-panel rounded-lg shadow-xl p-6 w-full max-w-2xl max-h-[90vh] flex flex-col"
+      >
+        <h3 class="text-2xl font-bold mb-4 border-b border-main pb-2">
+          Gestione Party
+        </h3>
+        <div class="flex-grow overflow-y-auto pr-2">
+          <div id="party-list" class="space-y-2 mb-4"></div>
+        </div>
+        <div class="mt-4 pt-4 border-t border-main">
+          <h4 class="text-lg font-semibold mb-2">Aggiungi/Modifica Membro</h4>
+          <form
+            id="party-member-form"
+            class="grid grid-cols-1 md:grid-cols-3 gap-3 items-end"
+          >
+            <input type="hidden" id="party-member-id" /><input
+              type="text"
+              id="party-member-name"
+              placeholder="Nome"
+              class="w-full bg-input border-main rounded-md px-3 py-2"
+              required
+            /><input
+              type="number"
+              id="party-member-hp"
+              placeholder="HP Massimi"
+              class="w-full bg-input border-main rounded-md px-3 py-2"
+              required
+            /><button
+              type="submit"
+              class="w-full bg-green-600 hover:bg-green-500 text-white font-bold py-2 px-4 rounded-lg"
+            >
+              Salva
+            </button>
+          </form>
+          <div class="flex gap-2 mt-4">
+            <button
+              id="save-party-file"
+              class="flex-1 bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-4 rounded-lg text-sm"
+            >
+              Esporta</button
+            ><label
+              class="flex-1 bg-blue-800 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg cursor-pointer text-center text-sm"
+              >Importa<input
+                type="file"
+                id="load-party-file"
+                class="hidden"
+                accept=".json"
+            /></label>
+          </div>
+        </div>
+        <div class="mt-6 flex justify-end">
+          <button
+            id="close-party-modal"
+            class="bg-gray-600 hover:bg-gray-500 text-white font-bold py-2 px-4 rounded-lg"
+          >
+            Chiudi
+          </button>
+        </div>
+      </div>
+    </div>
+    <div
+      id="dynamic-add-modal"
+      class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 hidden"
+    >
+      <div class="bg-panel rounded-lg shadow-xl p-6 w-full max-w-md">
+        <h3 class="text-xl font-bold mb-4">Aggiungi Partecipante</h3>
+        <form id="dynamic-add-form" class="space-y-4">
+          <input
+            type="text"
+            id="dynamic-name"
+            placeholder="Nome"
+            class="w-full bg-input border-main rounded-md px-3 py-2"
+            required
+          /><input
+            type="number"
+            id="dynamic-initiative"
+            placeholder="Iniziativa"
+            class="w-full bg-input border-main rounded-md px-3 py-2"
+            required
+          /><input
+            type="number"
+            id="dynamic-hp"
+            placeholder="Punti Ferita"
+            class="w-full bg-input border-main rounded-md px-3 py-2"
+            required
+          />
+          <div class="flex justify-around">
+            <label class="flex items-center"
+              ><input
+                type="radio"
+                name="alignment"
+                value="ally"
+                class="h-4 w-4 text-blue-600"
+                checked
+              />
+              <span class="ml-2">Alleato</span></label
+            ><label class="flex items-center"
+              ><input
+                type="radio"
+                name="alignment"
+                value="enemy"
+                class="h-4 w-4 text-red-600"
+              />
+              <span class="ml-2">Nemico</span></label
+            >
+          </div>
+          <div class="flex justify-end gap-2 mt-4">
+            <button
+              type="button"
+              id="close-dynamic-add-modal"
+              class="bg-gray-600 hover:bg-gray-500 py-2 px-4 rounded-lg"
+            >
+              Annulla</button
+            ><button
+              type="submit"
+              class="bg-green-600 hover:bg-green-500 py-2 px-4 rounded-lg"
+            >
+              Aggiungi
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <script>
+      // IIFE per incapsulare lo script
+      (() => {
+        // STATO GLOBALE
+        let combatants = [],
+          party = [],
+          monsters = [];
+        let currentTurnIndex = -1,
+          round = 1,
+          timerInterval = null,
+          timerSeconds = 0;
+        let activeParticipantForModal = null;
+
+        // OGGETTO CONDIZIONI AGGIORNATO
+        const CONDITIONS = {
+          Accecato:
+            "Non può vedere e fallisce le prove di abilità basate sulla vista. Vantaggio contro di lui, svantaggio per i suoi attacchi.",
+          Affascinato:
+            "Non può attaccare chi lo affascina. Vantaggio nelle prove sociali per interagire con lui.",
+          Afferrato: "Velocità 0. Non può beneficiare di bonus alla velocità.",
+          Assordato:
+            "Non può sentire e fallisce le prove di abilità basate sull'udito.",
+          Incapacitato: "Non può compiere azioni o reazioni.",
+          Invisibile:
+            "Impossibile da vedere. Vantaggio ai suoi attacchi, svantaggio contro di lui.",
+          Paralizzato:
+            "Incapacitato, non può muoversi o parlare. Fallisce i TS su FOR e DES. I colpi contro di lui sono critici se a 1.5m.",
+          Pietrificato:
+            "Incapacitato, non si muove, non parla, peso x10. Resistenza a tutti i danni. Fallisce i TS su FOR e DES.",
+          Avvelenato: "Svantaggio ai tiri per colpire e alle prove di abilità.",
+          Prono:
+            "Svantaggio ai tiri per colpire. Vantaggio contro di lui se a 1.5m, altrimenti svantaggio.",
+          "Privo di Sensi":
+            "Incapacitato, prono, non si muove, non parla. Fallisce i TS su FOR e DES. I colpi contro di lui sono critici se a 1.5m.",
+          Spaventato:
+            "Svantaggio a tiri per colpire e prove di abilità se vede la fonte della paura. Non può avvicinarsi ad essa.",
+          Sfinimento:
+            "Effetti negativi a 6 livelli (svantaggio, velocità ridotta, morte). Consultare il manuale per i dettagli.",
+          Stordito:
+            "Incapacitato, non si muove, parla a fatica. Fallisce i TS su FOR e DES. Vantaggio contro di lui.",
+          Trattenuto:
+            "Velocità 0. Svantaggio ai suoi attacchi e ai TS su DES. Vantaggio contro di lui.",
+        };
+
+        // DOM Elements
+        const getEl = (id) => document.getElementById(id);
+        const prepScreen = getEl("preparation-screen"),
+          encounterScreen = getEl("encounter-screen");
+        const initiativeList = getEl("initiative-list"),
+          roundCounter = getEl("round-counter");
+
+        // FUNZIONI DI RENDERING
+        const renderCombatants = () => {
+          initiativeList.innerHTML = "";
+          if (combatants.length === 0) return;
+
+          combatants.forEach((p, index) => {
+            const isActive = index === currentTurnIndex;
+            const isGood = p.isPlayer || p.isAlly;
+            const isDown = p.hp === 0;
+
+            let cardClass = "bg-tertiary";
+            if (isActive) cardClass = "active-card";
+            else if (isDown) cardClass = isGood ? "ally-down" : "enemy-down";
+            else cardClass = isGood ? "ally-card" : "enemy-card";
+
+            const card = document.createElement("div");
+            card.className = `participant-card p-4 rounded-lg flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 transition-all duration-300 ${cardClass}`;
+            card.dataset.id = p.id;
+
+            const groupInfo = p.isGroup
+              ? `<span class="text-xs text-yellow-300 ml-2">(<input type="number" value="${p.groupCount}" min="0" max="${p.initialGroupCount}" class="group-count-input w-10 bg-transparent text-center" data-id="${p.id}"> / ${p.initialGroupCount})</span>`
+              : "";
+
+            const typeMarker = p.isPlayer
+              ? "PG"
+              : p.isAlly
+              ? "Alleato"
+              : "Nemico";
+            const markerColor = p.isPlayer
+              ? "bg-blue-600"
+              : p.isAlly
+              ? "bg-green-600"
+              : "bg-gray-600";
+            const markerHTML = `<span class="text-xs ${markerColor} text-white font-bold ml-2 px-2 py-1 rounded-full">${typeMarker}</span>`;
+            const conditionsHTML = p.conditions
+              .map(
+                (c) =>
+                  `<div class="tooltip relative inline-block"><span class="bg-red-900 text-white text-xs font-semibold mr-2 px-2.5 py-0.5 rounded">${c}</span><p class="tooltip-text">${
+                    CONDITIONS[c] || "Condizione non definita"
+                  }</p></div>`
+              )
+              .join("");
+
+            card.innerHTML = `
+                <div class="flex-grow ${isDown ? "opacity-70" : ""}">
+                    <div class="flex items-center"><span class="font-bold text-lg">${
+                      p.name
+                    }</span>${groupInfo}${markerHTML}</div>
+                    <div class="text-sm text-muted">Iniziativa: <input type="number" value="${
+                      p.initiative
+                    }" class="initiative-input w-16 bg-input border-main rounded p-1 text-center" data-id="${
+              p.id
+            }"></div>
+                    <div class="mt-2">${conditionsHTML}</div>
+                </div>
+                <div class="flex items-center gap-4">
+                    <div class="flex items-center"><input type="number" class="hp-change w-20 bg-input border-main rounded-l-md p-2 text-center" placeholder="Danno"><button class="damage-btn bg-red-600 hover:bg-red-500 px-2 py-2 rounded-r-md text-sm">Applica</button></div>
+                    <div class="text-center"><span class="font-semibold text-xl">${
+                      p.hp
+                    }</span><span class="text-xs text-muted"> / ${
+              p.maxHp
+            }</span></div>
+                    <div class="flex flex-col gap-1"><button class="conditions-btn text-xs bg-yellow-600 hover:bg-yellow-500 px-2 py-1 rounded">Condizioni</button><button class="remove-btn text-xs bg-gray-600 hover:bg-gray-500 px-2 py-1 rounded">Rimuovi</button></div>
+                </div>`;
+            initiativeList.appendChild(card);
+          });
+        };
+
+        const renderPrepLists = () => {
+          const prepPartyList = getEl("prep-party-list");
+          const prepMonsterList = getEl("prep-monster-list");
+          prepPartyList.innerHTML =
+            party
+              .map(
+                (p) =>
+                  `<div class="bg-tertiary p-2 rounded-md ally-card">${p.name} (HP: ${p.maxHp})</div>`
+              )
+              .join("") ||
+            '<p class="text-muted">Nessun PG nel party. Aggiungine dalla Gestione Party.</p>';
+          prepMonsterList.innerHTML =
+            monsters
+              .map(
+                (m) =>
+                  `<div class="flex justify-between items-center bg-tertiary p-2 rounded-md"><span>${
+                    m.name
+                  } (x${
+                    m.groupCount || 1
+                  })</span><button class="remove-monster-btn text-red-400 text-xl" data-id="${
+                    m.id
+                  }">&times;</button></div>`
+              )
+              .join("") || '<p class="text-muted">Nessun mostro aggiunto.</p>';
+          getEl("start-encounter-btn").disabled = monsters.length === 0;
+        };
+
+        // LOGICA DI GIOCO
+        const sortCombatants = () =>
+          combatants.sort((a, b) => b.initiative - a.initiative);
+        const changeTurn = (direction) => {
+          if (combatants.length === 0) return;
+          if (currentTurnIndex === -1) {
+            sortCombatants();
+            currentTurnIndex = 0;
+          } else {
+            currentTurnIndex += direction;
+            if (currentTurnIndex >= combatants.length) {
+              currentTurnIndex = 0;
+              round++;
+            } else if (currentTurnIndex < 0) {
+              currentTurnIndex = combatants.length - 1;
+              if (round > 1) round--;
+            }
+          }
+          roundCounter.textContent = round;
+          renderCombatants();
+        };
+
+        // GESTIONE SCHERMATE
+        const showScreen = (screen) => {
+          prepScreen.classList.toggle("hidden", screen !== "prep");
+          encounterScreen.classList.toggle("hidden", screen !== "encounter");
+        };
+
+        getEl("start-encounter-btn").addEventListener("click", () => {
+          combatants = [
+            ...party.map((p) => ({
+              ...p,
+              id: `p_${p.id}`,
+              partyId: p.id,
+              hp: p.maxHp,
+              initiative: 0,
+              conditions: [],
+              isPlayer: true,
+              isAlly: false,
+            })),
+            ...monsters.map((m) => ({ ...m, isPlayer: false, isAlly: false })),
+          ];
+          party.forEach((p) => {
+            const initiative = prompt(
+              `Inserisci l'iniziativa per ${p.name}:`,
+              10
+            );
+            const combatant = combatants.find((c) => c.partyId === p.id);
+            if (combatant) combatant.initiative = parseInt(initiative) || 0;
+          });
+          currentTurnIndex = -1;
+          round = 1;
+          changeTurn(1);
+          showScreen("encounter");
+        });
+
+        getEl("end-encounter-btn").addEventListener("click", () => {
+          if (confirm("Sei sicuro di voler terminare l'incontro?")) {
+            monsters = [];
+            combatants = [];
+            stopTimer();
+            timerSeconds = 0;
+            updateTimerDisplay();
+            renderPrepLists();
+            showScreen("prep");
+          }
+        });
+
+        // GESTIONE TIMER
+        const updateTimerDisplay = () => {
+          const h = Math.floor(timerSeconds / 3600)
+            .toString()
+            .padStart(2, "0");
+          const m = Math.floor((timerSeconds % 3600) / 60)
+            .toString()
+            .padStart(2, "0");
+          const s = (timerSeconds % 60).toString().padStart(2, "0");
+          getEl("timer-display").textContent = `${h}:${m}:${s}`;
+        };
+        const startTimer = () => {
+          if (timerInterval) return;
+          timerInterval = setInterval(() => {
+            timerSeconds++;
+            updateTimerDisplay();
+          }, 1000);
+          getEl("timer-toggle").textContent = "❚❚";
+          getEl("timer-toggle").classList.replace(
+            "text-green-400",
+            "text-red-400"
+          );
+        };
+        const stopTimer = () => {
+          clearInterval(timerInterval);
+          timerInterval = null;
+          getEl("timer-toggle").textContent = "▶";
+          getEl("timer-toggle").classList.replace(
+            "text-red-400",
+            "text-green-400"
+          );
+        };
+        getEl("timer-toggle").addEventListener("click", () =>
+          timerInterval ? stopTimer() : startTimer()
+        );
+        getEl("timer-edit").addEventListener("click", () => {
+          stopTimer();
+          const newTime = prompt(
+            "Modifica tempo (HH:MM:SS):",
+            getEl("timer-display").textContent
+          );
+          if (newTime) {
+            const parts = newTime.split(":").map(Number);
+            if (parts.length === 3 && parts.every((p) => !isNaN(p))) {
+              timerSeconds = parts[0] * 3600 + parts[1] * 60 + parts[2];
+              updateTimerDisplay();
+            }
+          }
+        });
+
+        // EVENTI E MODALI
+        getEl("monster-is-group").addEventListener("change", (e) =>
+          getEl("monster-group-count").classList.toggle(
+            "hidden",
+            !e.target.checked
+          )
+        );
+        getEl("add-monster-form").addEventListener("submit", (e) => {
+          e.preventDefault();
+          const isGroup = getEl("monster-is-group").checked;
+          monsters.push({
+            id: `m_${Date.now()}`,
+            name: getEl("monster-name").value,
+            initiative: parseInt(getEl("monster-initiative").value),
+            hp: parseInt(getEl("monster-hp").value),
+            maxHp: parseInt(getEl("monster-hp").value),
+            isGroup,
+            groupCount: isGroup
+              ? parseInt(getEl("monster-group-count").value)
+              : 1,
+            initialGroupCount: isGroup
+              ? parseInt(getEl("monster-group-count").value)
+              : 1,
+            conditions: [],
+          });
+          e.target.reset();
+          getEl("monster-group-count").classList.add("hidden");
+          renderPrepLists();
+        });
+        getEl("prep-monster-list").addEventListener("click", (e) => {
+          if (e.target.classList.contains("remove-monster-btn")) {
+            monsters = monsters.filter((m) => m.id !== e.target.dataset.id);
+            renderPrepLists();
+          }
+        });
+
+        initiativeList.addEventListener("click", (e) => {
+          const card = e.target.closest(".participant-card");
+          if (!card) return;
+          const id = card.dataset.id;
+          const p = combatants.find((c) => c.id == id);
+          if (!p) return;
+
+          if (e.target.classList.contains("damage-btn")) {
+            const val = parseInt(card.querySelector(".hp-change").value);
+            if (!isNaN(val)) {
+              p.hp = Math.max(0, p.hp - val);
+              if (p.isGroup) {
+                const dmgPerMember = Math.ceil(p.maxHp / p.initialGroupCount);
+                p.groupCount = Math.ceil(p.hp / dmgPerMember);
+              }
+              renderCombatants();
+            }
+          } else if (e.target.classList.contains("remove-btn")) {
+            combatants = combatants.filter((c) => c.id != id);
+            renderCombatants();
+          } else if (e.target.classList.contains("conditions-btn")) {
+            activeParticipantForModal = p;
+            openConditionsModal();
+          }
+        });
+
+        initiativeList.addEventListener("contextmenu", (e) => {
+          e.preventDefault();
+          const card = e.target.closest(".participant-card");
+          if (!card) return;
+          const id = card.dataset.id;
+          const newIndex = combatants.findIndex((c) => c.id == id);
+          if (newIndex !== -1) {
+            currentTurnIndex = newIndex;
+            renderCombatants();
+          }
+        });
+
+        initiativeList.addEventListener("change", (e) => {
+          const id = e.target.dataset.id;
+          const p = combatants.find((c) => c.id == id);
+          if (!p) return;
+
+          if (e.target.classList.contains("initiative-input")) {
+            p.initiative = parseInt(e.target.value) || 0;
+            sortCombatants();
+            renderCombatants();
+          } else if (e.target.classList.contains("group-count-input")) {
+            let newCount = parseInt(e.target.value);
+            if (isNaN(newCount) || newCount < 0) newCount = 0;
+            if (newCount > p.initialGroupCount) newCount = p.initialGroupCount;
+            p.groupCount = newCount;
+
+            const hpPerMember = p.maxHp / p.initialGroupCount;
+            p.hp = Math.ceil(p.groupCount * hpPerMember);
+
+            renderCombatants();
+          }
+        });
+
+        // LOGICA CONDIZIONI CORRETTA
+        const conditionsModal = getEl("conditions-modal");
+        const openConditionsModal = () => {
+          const grid = getEl("conditions-grid");
+          grid.innerHTML = "";
+          if (!activeParticipantForModal) return;
+          Object.keys(CONDITIONS).forEach((condition) => {
+            const isChecked =
+              activeParticipantForModal.conditions.includes(condition);
+            grid.insertAdjacentHTML(
+              "beforeend",
+              `<label class="flex items-center space-x-2 cursor-pointer p-2 rounded-md hover:bg-tertiary"><input type="checkbox" data-condition="${condition}" class="h-4 w-4 rounded border-gray-300 text-red-600 focus:ring-red-500" ${
+                isChecked ? "checked" : ""
+              }><span>${condition}</span></label>`
+            );
+          });
+          conditionsModal.classList.remove("hidden");
+        };
+        getEl("close-conditions-modal").addEventListener("click", () =>
+          conditionsModal.classList.add("hidden")
+        );
+        getEl("conditions-grid").addEventListener("change", (e) => {
+          if (e.target.type === "checkbox" && activeParticipantForModal) {
+            const condition = e.target.dataset.condition;
+            if (e.target.checked) {
+              if (!activeParticipantForModal.conditions.includes(condition)) {
+                activeParticipantForModal.conditions.push(condition);
+              }
+            } else {
+              activeParticipantForModal.conditions =
+                activeParticipantForModal.conditions.filter(
+                  (c) => c !== condition
+                );
+            }
+            renderCombatants();
+          }
+        });
+
+        const dynamicAddModal = getEl("dynamic-add-modal");
+        getEl("add-dynamic-participant-btn").addEventListener("click", () =>
+          dynamicAddModal.classList.remove("hidden")
+        );
+        getEl("close-dynamic-add-modal").addEventListener("click", () =>
+          dynamicAddModal.classList.add("hidden")
+        );
+        getEl("dynamic-add-form").addEventListener("submit", (e) => {
+          e.preventDefault();
+          const isAlly = e.target.alignment.value === "ally";
+          combatants.push({
+            id: `d_${Date.now()}`,
+            name: getEl("dynamic-name").value,
+            initiative: parseInt(getEl("dynamic-initiative").value),
+            hp: parseInt(getEl("dynamic-hp").value),
+            maxHp: parseInt(getEl("dynamic-hp").value),
+            isPlayer: false,
+            isAlly,
+            conditions: [],
+            isGroup: false,
+          });
+          sortCombatants();
+          renderCombatants();
+          e.target.reset();
+          dynamicAddModal.classList.add("hidden");
+        });
+
+        const partyModal = getEl("party-manager-modal");
+        const partyForm = getEl("party-member-form");
+        const renderPartyList = () => {
+          const list = getEl("party-list");
+          list.innerHTML =
+            party
+              .map(
+                (m) =>
+                  `<div class="flex items-center justify-between bg-tertiary p-2 rounded-md"><div><span class="font-bold">${m.name}</span> - HP: ${m.maxHp}</div><div class="flex gap-2"><button class="edit-party-member-btn text-xs bg-yellow-600 hover:bg-yellow-500 px-2 py-1 rounded" data-id="${m.id}">Modifica</button><button class="delete-party-member-btn text-xs bg-red-700 hover:bg-red-600 px-2 py-1 rounded" data-id="${m.id}">Elimina</button></div></div>`
+              )
+              .join("") ||
+            '<p class="text-muted text-center">Nessun membro.</p>';
+        };
+        const saveParty = () => {
+          localStorage.setItem("dndParty", JSON.stringify(party));
+          renderPrepLists();
+        };
+        const openPartyModal = () => {
+          renderPartyList();
+          partyModal.classList.remove("hidden");
+        };
+        getEl("manage-party-btn").addEventListener("click", (e) => {
+          e.preventDefault();
+          openPartyModal();
+        });
+        getEl("prep-manage-party-btn").addEventListener("click", (e) => {
+          e.preventDefault();
+          openPartyModal();
+        });
+        getEl("close-party-modal").addEventListener("click", () =>
+          partyModal.classList.add("hidden")
+        );
+        partyForm.addEventListener("submit", (e) => {
+          e.preventDefault();
+          const id = getEl("party-member-id").value;
+          const name = getEl("party-member-name").value;
+          const maxHp = parseInt(getEl("party-member-hp").value);
+          if (id)
+            Object.assign(
+              party.find((m) => m.id == id),
+              { name, maxHp }
+            );
+          else party.push({ id: Date.now(), name, maxHp });
+          saveParty();
+          renderPartyList();
+          partyForm.reset();
+        });
+        getEl("party-list").addEventListener("click", (e) => {
+          const id = e.target.dataset.id;
+          if (e.target.classList.contains("delete-party-member-btn")) {
+            party = party.filter((m) => m.id != id);
+            saveParty();
+            renderPartyList();
+          } else if (e.target.classList.contains("edit-party-member-btn")) {
+            const member = party.find((m) => m.id == id);
+            getEl("party-member-id").value = member.id;
+            getEl("party-member-name").value = member.name;
+            getEl("party-member-hp").value = member.maxHp;
+          }
+        });
+
+        const toggleTheme = (e) => {
+          e.preventDefault();
+          document.body.classList.toggle("light-theme");
+          localStorage.setItem(
+            "dndTheme",
+            document.body.classList.contains("light-theme") ? "light" : "dark"
+          );
+        };
+
+        const init = () => {
+          if (localStorage.getItem("dndTheme") === "light")
+            document.body.classList.add("light-theme");
+          party = JSON.parse(localStorage.getItem("dndParty") || "[]");
+          getEl("next-turn").addEventListener("click", () => changeTurn(1));
+          getEl("prev-turn").addEventListener("click", () => changeTurn(-1));
+
+          const menuButton = getEl("menu-button"),
+            menuDropdown = getEl("menu-dropdown");
+          menuButton.addEventListener("click", () =>
+            menuDropdown.classList.toggle("hidden")
+          );
+          document.addEventListener("click", (e) => {
+            if (!menuButton.contains(e.target))
+              menuDropdown.classList.add("hidden");
+          });
+
+          const prepMenuButton = getEl("prep-menu-button"),
+            prepMenuDropdown = getEl("prep-menu-dropdown");
+          prepMenuButton.addEventListener("click", () =>
+            prepMenuDropdown.classList.toggle("hidden")
+          );
+          document.addEventListener("click", (e) => {
+            if (!prepMenuButton.contains(e.target))
+              prepMenuDropdown.classList.add("hidden");
+          });
+
+          getEl("theme-toggle-btn").addEventListener("click", toggleTheme);
+          getEl("prep-theme-toggle-btn").addEventListener("click", toggleTheme);
+
+          renderPrepLists();
+          showScreen("prep");
+        };
+
+        init();
+      })();
+    </script>
+  </body>
+</html>
